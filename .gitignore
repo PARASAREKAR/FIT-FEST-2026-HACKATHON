@@ -1,0 +1,13 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Temp test files
+scratch/
+.tempmediaStorage/
+*.log
+
+# OS metadata
+.DS_Store
+Thumbs.db

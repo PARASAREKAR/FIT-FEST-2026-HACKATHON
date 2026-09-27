@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PulseSync | Clinical Management & Emergency Command Grid</title>
+  <meta name="description" content="Unified healthcare operations platform with live satellite emergency mapping, SQLite relational database, and native C++ geodesic dispatch engine.">
+
+  <!-- Google Fonts Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Leaflet GIS CSS & Clean Design System & Emergency Animations -->
+  <link rel="stylesheet" href="css/leaflet.css">
+  <link rel="stylesheet" href="css/clean-app.css?v=4.2">
+  <link rel="stylesheet" href="css/emergency.css?v=4.2">
+</head>
+<body data-active-role="staff">
+
+  <!-- ==================== 0. LIVE ANIMATED ECG PULSE BAR ==================== -->
+  <div class="ecg-live-bar">
+    <div style="display:flex; align-items:center; gap:0.5rem; z-index:2;">
+      <span class="heartbeat-icon" style="color:#ef4444; font-size:1.1rem;">❤️‍🔥</span>
+      <span style="font-weight:700; color:#fff;">LIVE ECG PULSE:</span>
+      <span style="color:#10b981; font-weight:600;">72 BPM Normal Sinus Rhythm</span>
+      <span>•</span>
+      <span style="color:#38bdf8;">SpO2: 99%</span>
+    </div>
+
+    <!-- Animated SVG ECG Path -->
+    <svg class="ecg-svg-wave" viewBox="0 0 1200 24" preserveAspectRatio="none">
+      <path class="ecg-pulse-path" d="M0,12 L200,12 L220,12 L230,2 L240,22 L250,8 L260,14 L270,12 L500,12 L520,12 L530,2 L540,22 L550,8 L560,14 L570,12 L800,12 L820,12 L830,2 L840,22 L850,8 L860,14 L870,12 L1100,12 L1120,12 L1130,2 L1140,22 L1150,8 L1160,14 L1170,12 L1200,12" fill="none" stroke="#06b6d4" stroke-width="2" />
+    </svg>
+
+    <div style="display:flex; align-items:center; gap:0.75rem; z-index:2;">
+      <span style="color:var(--text-muted);">⚡ C++ Geodesic Engine: <strong style="color:#10b981;">Active</strong></span>
+      <span>•</span>
+      <span style="color:#38bdf8;">💾 SQLite3 DB: <strong style="color:#10b981;">Connected</strong></span>
+    </div>
+  </div>
+
+  <!-- ==================== 1. CLEAN TOP HEADER ==================== -->
+  <header class="clean-header">
+    <div class="brand-block" onclick="CleanApp.switchTab('dashboard')">
+      <div class="brand-icon">
+        <span class="heartbeat-icon">❤️‍🔥</span>
+      </div>
+      <div>
+        <div class="brand-title">PulseSync <span>Health</span></div>
+        <div class="brand-sub">Clinical & Emergency Command Grid</div>
+      </div>
+    </div>
+
+    <!-- User Role Switcher Pill -->
+    <div class="role-switcher-pill">
+      <button class="role-btn" data-role="doctor">👨‍⚕️ Doctor View</button>
+      <button class="role-btn active" data-role="staff">🏢 Clinic Staff</button>
+      <button class="role-btn" data-role="patient">🧑‍💼 Patient Portal</button>
+    </div>
+
+    <!-- Active User Profile & Actions -->
+    <div class="header-actions">
+      <!-- User Profile Badge & Login Gateway Trigger -->
+      <div class="user-profile-badge" onclick="CleanApp.openModal('modal-auth-gateway')" title="Click to Switch Persona or Log In">
+        <div class="user-avatar-circle" id="header-user-avatar">🏢</div>
+        <div>
+          <div style="font-weight:700; color:#fff; line-height:1.2;" id="header-user-name">Sunita Sen</div>
+          <div style="font-size:0.68rem; color:var(--text-muted);" id="header-user-role">Clinic Admin</div>
+        </div>
+        <span style="font-size:0.75rem; color:var(--cyan); margin-left:4px;">🔑 Switch</span>
+      </div>
+
+      <!-- Engine Status Badge -->
+      <div id="engine-status-badge" class="engine-badge">
+        <span class="dot"></span> ⚡ C++ Engine: Active • 💾 SQLite: Connected
+      </div>
+
+      <!-- SOS Emergency Button with Concentric Animated Ripples -->
+      <div class="sos-beacon-wrapper">
+        <div class="sos-beacon-ripple"></div>
+        <div class="sos-beacon-ripple delay-1"></div>
+        <button class="btn-sos" onclick="CleanApp.openModal('modal-emergency-sos')">
+          🚨 SOS Emergency
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== 2. SUB-NAV TABS ==================== -->
+  <nav class="clean-nav-bar">
+    <button class="clean-nav-tab active" data-nav-tab="dashboard">📊 Dashboard</button>
+    <button class="clean-nav-tab" data-nav-tab="map">🗺️ Satellite Map</button>
+    <button class="clean-nav-tab" data-nav-tab="appointments">📅 Appointments</button>
+    <button class="clean-nav-tab" data-nav-tab="ambulances">🚑 Ambulances</button>
+    <button class="clean-nav-tab" data-nav-tab="blood">🩸 Blood Bank</button>
+    <button class="clean-nav-tab" data-nav-tab="facilities">🏥 Hospitals & ICUs</button>
+    <button class="clean-nav-tab" data-nav-tab="patients">👥 Patients</button>
+  </nav>
+
+  <!-- ==================== 3. MAIN APP CONTAINER ==================== -->
+  <main class="clean-container">
+
+    <!-- Role Context Indicator -->
+    <div style="margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap:wrap; gap:0.5rem;">
+      <div style="font-size: 0.82rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.4rem;">
+        <span style="color: var(--cyan); font-weight: 700;">ACTIVE CONTEXT:</span>
+        <span id="role-indicator-text">Clinic Administrative & Emergency Command Grid (Full Operational & Fleet Control)</span>
+      </div>
+      <div style="font-size: 0.78rem; color: var(--text-dim);">
+        Data Synced with SQLite (Zero Latency) • C++ Haversine Engine (Sub-5ms)
+      </div>
+    </div>
+
+    <!-- ==================== VIEW 1: DASHBOARD (UNIQUE TO EACH ROLE) ==================== -->
+    <section id="view-dashboard" class="clean-view active">
+
+      <!-- ==================== 1A. CLINIC MANAGEMENT / STAFF DASHBOARD ==================== -->
+      <div id="dashboard-view-staff">
+        <!-- Staff Executive Hero Banner -->
+        <div class="staff-hero-banner">
+          <div>
+            <span class="badge-clean confirmed" style="font-size:0.75rem; margin-bottom:0.4rem; display:inline-block;">
+              🏢 CLINIC ADMINISTRATIVE & EMERGENCY OPERATIONS
+            </span>
+            <h2 style="font-size:1.5rem; color:#fff; font-weight:800; margin-bottom:0.35rem;">
+              Operational Command Console
+            </h2>
+            <p style="font-size:0.85rem; color:var(--text-muted); max-width:650px;">
+              Comprehensive oversight of patient intakes, physician queues, mobile ICU fleet tracking, and regional blood bank logistics.
+            </p>
+          </div>
+          <div style="display:flex; gap:0.6rem;">
+            <button class="btn-clean" onclick="CleanApp.openModal('modal-new-appointment')">
+              ➕ Book Appointment
+            </button>
+            <button class="btn-clean-outline" onclick="CleanApp.openModal('modal-new-patient')">
+              ➕ Add Patient
+            </button>
+          </div>
+        </div>
+
+        <!-- 4 Clean Staff Stat KPI Cards -->
+        <div class="stat-grid-4">
+          <div class="stat-clean-card">
+            <div class="stat-data">
+              <h3 id="stat-patients-count">0</h3>
+              <p>Registered Patients</p>
+            </div>
+            <div class="stat-icon">👥</div>
+          </div>
+
+          <div class="stat-clean-card">
+            <div class="stat-data">
+              <h3 id="stat-apts-count">0</h3>
+              <p>Today's Appointments</p>
+            </div>
+            <div class="stat-icon">📅</div>
+          </div>
+
+          <div class="stat-clean-card">
+            <div class="stat-data">
+              <h3 id="stat-ambs-count">0 / 0</h3>
+              <p>Active Ambulances</p>
+            </div>
+            <div class="stat-icon">🚑</div>
+          </div>
+
+          <div class="stat-clean-card">
+            <div class="stat-data">
+              <h3 id="stat-icu-count">0 Beds</h3>
+              <p>Emergency ICUs Available</p>
+            </div>
+            <div class="stat-icon">🛏️</div>
+          </div>
+        </div>
+
+        <!-- Split Layout: Consultation Queue & Emergency Dispatches -->
+        <div class="dashboard-grid">
+          <!-- Left: Today's Consultation Queue -->
+          <div class="clean-panel">
+            <div class="panel-head">
+              <h2><span>📋</span> Master Consultation Queue</h2>
+              <button class="btn-clean-outline" onclick="CleanApp.switchTab('appointments')">
+                All Dates ➔
+              </button>
+            </div>
+            <div class="clean-table-wrapper">
+              <table class="clean-table">
+                <thead>
+                  <tr>
+                    <th>Patient</th>
+                    <th>Time</th>
+                    <th>Doctor</th>
+                    <th>Department</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="dashboard-appointments-tbody">
+                  <!-- Loaded dynamically from SQLite -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Right: Real-time Emergency & Fleet Monitor -->
+          <div class="clean-panel">
+            <div class="panel-head">
+              <h2><span>🚨</span> Live Emergency Fleet Radar</h2>
+              <button class="btn-clean-outline" onclick="CleanApp.switchTab('map')">
+                View Satellite Map 🛰️
+              </button>
+            </div>
+            <div id="dashboard-emergency-feed">
+              <!-- Loaded dynamically from SQLite -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== 1B. DOCTOR / PHYSICIAN DASHBOARD ==================== -->
+      <div id="dashboard-view-doctor" style="display:none;">
+        <!-- Doctor Hero Banner -->
+        <div class="doctor-hero-banner">
+          <div>
+            <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.4rem;">
+              <span class="badge-clean confirmed" style="font-size:0.75rem;">👨‍⚕️ ATTENDING PHYSICIAN COCKPIT</span>
+              <span class="badge-clean scheduled" style="font-size:0.75rem;">GENERAL MEDICINE & ENDOCRINOLOGY</span>
+            </div>
+            <h2 style="font-size:1.5rem; color:#fff; font-weight:800; margin-bottom:0.35rem;">
+              Dr. Arvind Mehta, MD
+            </h2>
+            <p style="font-size:0.85rem; color:#cbd5e1; max-width:650px;">
+              Clinical examination desk with instant allergy warnings, vitals recorder, longitudinal visit histories, and C++ geodesic home-visit routing.
+            </p>
+          </div>
+          <div style="display:flex; gap:0.6rem;">
+            <button class="btn-clean" style="background:#3b82f6;" onclick="CleanApp.openModal('modal-new-appointment')">
+              ➕ Schedule Visit
+            </button>
+            <button class="btn-sos" onclick="CleanApp.openModal('modal-emergency-sos')">
+              🚨 ICU Referral
+            </button>
+          </div>
+        </div>
+
+        <!-- 4 Doctor Clinical KPIs -->
+        <div class="stat-grid-4">
+          <div class="stat-clean-card">
+            <div class="stat-data">
+              <h3 id="doc-stat-waiting">4 Patients</h3>
+              <p>Waiting in Room Today</p>
+            </div>
+            <div class="stat-icon">🩺</div>
+          </div>
+
+          <div class="stat-clean-card">
+            <div class="stat-data">
+              <h3 id="doc-stat-completed">2 Completed</h3>
+              <p>Consultations Today</p>
+            </div>
+            <div class="stat-icon">✅</div>
+          </div>
+
+          <div class="stat-clean-card">
+            <div class="stat-data">
+              <h3 style="color:#ef4444;">1 High Risk</h3>
+              <p>Allergy Shield (Penicillin)</p>
+            </div>
+            <div class="stat-icon">⚠️</div>
+          </div>
+
+          <div class="stat-clean-card">
+            <div class="stat-data">
+              <h3 id="doc-stat-home">2 Patients</h3>
+              <p>Scheduled Home Visits</p>
+            </div>
+            <div class="stat-icon">🏠</div>
+          </div>
+        </div>
+
+        <!-- Doctor Queue & Home Visits -->
+        <div class="dashboard-grid">
+          <!-- Left: My Patient Consultation Queue -->
+          <div class="clean-panel">
+            <div class="panel-head">
+              <h2><span>🩺</span> Today's Assigned Patient Queue</h2>
+              <span style="font-size:0.8rem; color:#38bdf8;">Priority Triage View</span>
+            </div>
+            <div class="clean-table-wrapper">
+              <table class="clean-table">
+                <thead>
+                  <tr>
+                    <th>Patient</th>
+                    <th>Time</th>
+                    <th>Vitals Preview</th>
+                    <th>Chief Complaint</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="doctor-queue-tbody">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Right: Doctor Home Visits (C++ Haversine Geodesic Calculated) -->
+          <div class="clean-panel">
+            <div class="panel-head">
+              <h2><span>🏠</span> Scheduled Home Visits (Elderly / Post-Op)</h2>
+              <span style="font-size:0.75rem; color:var(--cyan);">⚡ C++ Geodesic Routing</span>
+            </div>
+            <div id="doctor-home-visits-list">
+              <!-- Dynamically populated from SQLite patients with distance -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== 1C. PATIENT / FAMILY PORTAL DASHBOARD ==================== -->
+      <div id="dashboard-view-patient" style="display:none;">
+        <!-- Patient Personalized Hero Banner -->
+        <div class="patient-hero-banner">
+          <div>
+            <span class="badge-clean confirmed" style="font-size:0.75rem; margin-bottom:0.4rem; display:inline-block;">
+              🧑‍💼 PATIENT & FAMILY HEALTH PORTAL
+            </span>
+            <h2 style="font-size:1.5rem; color:#fff; font-weight:800; margin-bottom:0.35rem;">
+              Welcome, Priya Verma
+            </h2>
+            <p style="font-size:0.85rem; color:#cbd5e1;">
+              Medical ID: <strong style="color:var(--cyan);">PT-1002</strong> • Blood Group: <strong style="color:#ef4444;">A+</strong> • Primary Doctor: <strong>Dr. Shalini Rao (Pulmonology)</strong>
+            </p>
+            <p style="font-size:0.78rem; color:var(--text-muted); margin-top:2px;">
+              Chronic History: Post-Viral Bronchial Wheeze • Sector 18, Green Park, New Delhi
+            </p>
+          </div>
+          <div style="display:flex; gap:0.6rem;">
+            <button class="btn-clean" style="background:#10b981;" onclick="CleanApp.openModal('modal-new-appointment')">
+              📅 Book Doctor Consultation
+            </button>
+            <button class="btn-sos" onclick="CleanApp.openModal('modal-emergency-sos')">
+              🚨 1-Tap SOS Ambulance
+            </button>
+          </div>
+        </div>
+
+        <!-- Patient Quick Cards -->
+        <div class="stat-grid-4">
+          <div class="stat-clean-card">
+            <div class="stat-data">
+              <h3>Today 10:15 AM</h3>
+              <p>Next Appointment (Dr. Shalini Rao)</p>
+            </div>
+            <div class="stat-icon">📅</div>
+          </div>
+
+          <div class="stat-clean-card">
+            <div class="stat-data">
+              <h3 style="color:#10b981;">1.8 km (4 min)</h3>
+              <p>Nearest ICU: Fortis Hospital</p>
+            </div>
+            <div class="stat-icon">🏥</div>
+          </div>
+
+          <div class="stat-clean-card">
+            <div class="stat-data">
+              <h3 style="color:#ef4444;">36 Units Available</h3>
+              <p>Compatible Blood (A+, O-)</p>
+            </div>
+            <div class="stat-icon">🩸</div>
+          </div>
+
+          <div class="stat-clean-card">
+            <div class="stat-data">
+              <h3 style="color:var(--cyan);">DL-01-EA-1081</h3>
+              <p>Nearest Active Mobile ICU</p>
+            </div>
+            <div class="stat-icon">🚑</div>
+          </div>
+        </div>
+
+        <!-- Split Grid: My Appointments & Nearby Hospital Beds -->
+        <div class="dashboard-grid">
+          <!-- Left: My Appointments -->
+          <div class="clean-panel">
+            <div class="panel-head">
+              <h2><span>📅</span> My Appointments & Doctor Prescriptions</h2>
+              <button class="btn-clean" onclick="CleanApp.openModal('modal-new-appointment')">
+                ➕ Book New Visit
+              </button>
+            </div>
+            <div id="patient-my-appointments-feed">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <!-- Right: Nearby Emergency Facilities -->
+          <div class="clean-panel">
+            <div class="panel-head">
+              <h2><span>🏥</span> Emergency Care & Casualty Hotlines</h2>
+              <button class="btn-clean-outline" onclick="CleanApp.switchTab('facilities')">
+                View All Hospitals ➔
+              </button>
+            </div>
+            <div id="patient-emergency-hospitals">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ==================== VIEW 2: HIGH-DEFINITION SATELLITE MAP ==================== -->
+    <section id="view-map" class="clean-view">
+      <div class="clean-panel" style="padding: 1rem;">
+        <div class="panel-head" style="margin-bottom: 0.75rem;">
+          <div>
+            <h2><span>🛰️</span> Live Emergency & Healthcare Satellite Map (India)</h2>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">
+              High-definition space imagery of India with live GPS-tracked ambulances, trauma hospitals, and doctor home visits.
+            </p>
+          </div>
+          <div style="display: flex; gap: 0.5rem;">
+            <button class="btn-clean-outline" onclick="CleanApp.jumpMap(21.7679, 78.8718, 5)">
+              🇮🇳 Whole India
+            </button>
+            <button class="btn-clean-outline" onclick="CleanApp.jumpMap(28.5355, 77.2410, 13)">
+              📍 Delhi-NCR HQ
+            </button>
+          </div>
+        </div>
+
+        <!-- Map Viewport with Floating Glass Pill Controls -->
+        <div class="map-frame-wrapper">
+          <div class="map-floating-controls">
+            <!-- Basemap Pill Group -->
+            <div class="map-control-pill-group">
+              <button class="map-pill-btn active" onclick="CleanApp.setMapBaseLayer('satellite_real'); this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('active')); this.classList.add('active');">
+                🛰️ HD Satellite
+              </button>
+              <button class="map-pill-btn" onclick="CleanApp.setMapBaseLayer('satellite_photo'); this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('active')); this.classList.add('active');">
+                🌍 Space Photo
+              </button>
+              <button class="map-pill-btn" onclick="CleanApp.setMapBaseLayer('osm'); this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('active')); this.classList.add('active');">
+                🗺️ Street View
+              </button>
+            </div>
+
+            <!-- Jump Region Pill Group -->
+            <div class="map-control-pill-group">
+              <button class="map-pill-btn" onclick="CleanApp.jumpMap(19.0515, 72.8295, 12)">Mumbai</button>
+              <button class="map-pill-btn" onclick="CleanApp.jumpMap(12.8028, 77.6974, 12)">Bengaluru</button>
+              <button class="map-pill-btn" onclick="CleanApp.jumpMap(17.4265, 78.4128, 12)">Hyderabad</button>
+              <button class="map-pill-btn" onclick="CleanApp.jumpMap(22.5186, 88.3644, 12)">Kolkata</button>
+              <button class="map-pill-btn" onclick="CleanApp.jumpMap(13.0604, 80.2508, 12)">Chennai</button>
+            </div>
+          </div>
+
+          <div id="clean-interactive-map" style="height: 520px; width: 100%; background: #070b14;"></div>
+        </div>
+
+        <!-- Space Observation Telemetry Card with Real Downloaded Satellite Image -->
+        <div style="margin-top: 1rem; background: rgba(12, 18, 32, 0.7); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1rem; display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap;">
+          <div style="width: 140px; height: 90px; border-radius: 8px; overflow: hidden; border: 1px solid rgba(6, 182, 212, 0.4); flex-shrink: 0; cursor: pointer;" onclick="CleanApp.setMapBaseLayer('satellite_photo'); CleanApp.jumpMap(21.7679, 78.8718, 5);" title="Click to view full photo overlay on map">
+            <img src="assets/india-satellite.png" alt="Real Space Satellite Image of India" style="width: 100%; height: 100%; object-fit: cover;" />
+          </div>
+          <div style="flex: 1; min-width: 240px;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.2rem;">
+              <span class="badge-clean confirmed" style="font-size: 0.68rem;">NASA / ISRO SPACE COMPOSITE</span>
+              <span style="font-size: 0.75rem; color: var(--text-muted);">Active Subcontinent Geodesic Grid</span>
+            </div>
+            <h4 style="font-size: 0.95rem; color: #fff; margin-bottom: 0.2rem;">Authentic High-Resolution Satellite Map of India</h4>
+            <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;">
+              True space photography of the subcontinent, coastal waterways, and Himalayan ranges integrated with real-time C++ nearest ambulance dispatch calculations.
+            </p>
+          </div>
+          <div style="display: flex; gap: 0.5rem;">
+            <button class="btn-clean" onclick="CleanApp.setMapBaseLayer('satellite_photo'); CleanApp.jumpMap(21.7679, 78.8718, 5);">
+              🛰️ Display Photo on Map
+            </button>
+            <button class="btn-clean-outline" onclick="CleanApp.setMapBaseLayer('satellite_real'); CleanApp.jumpMap(21.7679, 78.8718, 5);">
+              🌍 Streaming Satellite HD
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== VIEW 3: APPOINTMENTS ==================== -->
+    <section id="view-appointments" class="clean-view">
+      <div class="clean-panel">
+        <div class="panel-head">
+          <div>
+            <h2><span>📅</span> Patient Appointments & Consultations</h2>
+            <p style="font-size: 0.8rem; color: var(--text-muted);">Manage scheduled visits, consult states, and follow-ups stored in SQLite.</p>
+          </div>
+          <button class="btn-clean" onclick="CleanApp.openModal('modal-new-appointment')">
+            ➕ Schedule New Appointment
+          </button>
+        </div>
+
+        <div class="clean-table-wrapper">
+          <table class="clean-table">
+            <thead>
+              <tr>
+                <th>Patient</th>
+                <th>Time</th>
+                <th>Doctor</th>
+                <th>Department</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="appointments-full-tbody">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== VIEW 4: AMBULANCES ==================== -->
+    <section id="view-ambulances" class="clean-view">
+      <div class="clean-panel">
+        <div class="panel-head">
+          <div>
+            <h2><span>🚑</span> Emergency Ambulance Fleet & GPS Tracking</h2>
+            <p style="font-size: 0.8rem; color: var(--text-muted);">Active mobile ICUs with C++ geodesic routing and real-time status updates.</p>
+          </div>
+          <button class="btn-sos" onclick="CleanApp.openModal('modal-emergency-sos')">
+            🚨 Trigger Emergency Dispatch
+          </button>
+        </div>
+
+        <div id="ambulances-cards-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem;">
+          <!-- Dynamically populated from SQLite -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== VIEW 5: BLOOD BANK ==================== -->
+    <section id="view-blood" class="clean-view">
+      <div class="clean-panel">
+        <div class="panel-head">
+          <div>
+            <h2><span>🩸</span> Regional Blood Bank & Donor Matching Registry</h2>
+            <p style="font-size: 0.8rem; color: var(--text-muted);">ABO/Rh inventory backed by C++ native compatibility matching.</p>
+          </div>
+          <button class="btn-clean" onclick="CleanApp.openBloodRequestModal('O+')">
+            🩸 Request Blood Supply
+          </button>
+        </div>
+
+        <div id="blood-inventory-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.25rem;">
+          <!-- Dynamically populated from SQLite -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== VIEW 6: FACILITIES & ICUS ==================== -->
+    <section id="view-facilities" class="clean-view">
+      <div class="clean-panel">
+        <div class="panel-head">
+          <div>
+            <h2><span>🏥</span> 24x7 Partner Hospitals & Trauma Centers</h2>
+            <p style="font-size: 0.8rem; color: var(--text-muted);">Real-time ICU bed counters and casualty emergency contacts.</p>
+          </div>
+        </div>
+
+        <div id="facilities-cards-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.25rem;">
+          <!-- Dynamically populated from SQLite -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== VIEW 7: PATIENTS ==================== -->
+    <section id="view-patients" class="clean-view">
+      <div class="clean-panel">
+        <div class="panel-head">
+          <div>
+            <h2><span>👥</span> Registered Patient Directory</h2>
+            <p style="font-size: 0.8rem; color: var(--text-muted);">Permanent patient records managed via SQLite database.</p>
+          </div>
+          <div style="display: flex; gap: 0.5rem;">
+            <input type="text" id="patient-search-input" class="clean-input" placeholder="Search patient name..." oninput="CleanApp.loadPatients()">
+            <button class="btn-clean" onclick="CleanApp.openModal('modal-new-patient')">
+              ➕ Add Patient
+            </button>
+          </div>
+        </div>
+
+        <div class="clean-table-wrapper">
+          <table class="clean-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Full Name</th>
+                <th>Age / Gender</th>
+                <th>Blood</th>
+                <th>Clinical Condition</th>
+                <th>Contact</th>
+              </tr>
+            </thead>
+            <tbody id="patients-table-tbody">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==================== MODALS ==================== -->
+
+  <!-- 0. AUTHENTICATION GATEWAY MODAL (PERSONA LOGIN & REGISTRATION) -->
+  <div id="modal-auth-gateway" class="clean-modal-backdrop">
+    <div class="clean-modal-box auth-gateway-box">
+      <div class="modal-header-row">
+        <h3 style="color: #fff; display: flex; align-items: center; gap: 0.5rem; font-size: 1.2rem;">
+          <span class="heartbeat-icon">❤️‍🔥</span> PulseSync Healthcare Gateway
+        </h3>
+        <button class="modal-close-icon modal-close-trigger">&times;</button>
+      </div>
+      <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+        Select a role or sign in with your credentials. User accounts and login sessions are stored permanently in the <strong>SQLite database</strong>.
+      </p>
+
+      <!-- 3 Quick Login Persona Cards -->
+      <div style="font-size:0.75rem; font-weight:700; color:var(--cyan); margin-bottom:0.4rem;">
+        ⚡ 1-CLICK INSTANT PERSONA LOGIN:
+      </div>
+      <div class="persona-cards-grid">
+        <div class="persona-choice-card" onclick="CleanApp.quickLogin('doctor'); CleanApp.closeAllModals();">
+          <div class="p-icon">👨‍⚕️</div>
+          <div class="p-title">Doctor Portal</div>
+          <div class="p-sub">Dr. Arvind Mehta</div>
+        </div>
+        <div class="persona-choice-card" onclick="CleanApp.quickLogin('staff'); CleanApp.closeAllModals();">
+          <div class="p-icon">🏢</div>
+          <div class="p-title">Clinic Staff</div>
+          <div class="p-sub">Sunita Sen (Admin)</div>
+        </div>
+        <div class="persona-choice-card" onclick="CleanApp.quickLogin('patient'); CleanApp.closeAllModals();">
+          <div class="p-icon">🧑‍💼</div>
+          <div class="p-title">Patient Portal</div>
+          <div class="p-sub">Priya Verma (PT-1002)</div>
+        </div>
+      </div>
+
+      <!-- Auth Tabs: Sign In / Register -->
+      <div class="auth-tabs-row">
+        <button class="auth-tab-btn active" data-auth-tab="login">Sign In</button>
+        <button class="auth-tab-btn" data-auth-tab="register">Register Account</button>
+      </div>
+
+      <!-- Login Form -->
+      <form id="auth-form-login" onsubmit="CleanApp.handleLoginForm(event)">
+        <div style="display: flex; flex-direction: column; gap: 0.85rem;">
+          <div>
+            <label style="display:block; font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:4px;">EMAIL ADDRESS</label>
+            <input type="email" id="login-email" class="clean-input w-100" style="width:100%;" value="doctor@pulsesync.com" required>
+          </div>
+          <div>
+            <label style="display:block; font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:4px;">PASSWORD</label>
+            <input type="password" id="login-password" class="clean-input w-100" style="width:100%;" value="doc123" required>
+          </div>
+          <div>
+            <label style="display:block; font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:4px;">ROLE</label>
+            <select id="login-role" class="clean-input w-100" style="width:100%;">
+              <option value="doctor">👨‍⚕️ Physician / Doctor</option>
+              <option value="staff">🏢 Clinic Management Staff</option>
+              <option value="patient">🧑‍💼 Patient</option>
+            </select>
+          </div>
+
+          <button type="submit" class="btn-clean" style="justify-content:center; padding: 10px; margin-top: 0.35rem;">
+            🔐 Sign In & Save Session to SQLite
+          </button>
+        </div>
+      </form>
+
+      <!-- Register Form -->
+      <form id="auth-form-register" style="display:none;" onsubmit="CleanApp.handleRegisterForm(event)">
+        <div style="display: flex; flex-direction: column; gap: 0.85rem;">
+          <div>
+            <label style="display:block; font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:4px;">FULL NAME</label>
+            <input type="text" id="reg-name" class="clean-input w-100" style="width:100%;" placeholder="e.g. Dr. Rajesh Sharma" required>
+          </div>
+          <div>
+            <label style="display:block; font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:4px;">EMAIL ADDRESS</label>
+            <input type="email" id="reg-email" class="clean-input w-100" style="width:100%;" placeholder="name@domain.com" required>
+          </div>
+          <div>
+            <label style="display:block; font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:4px;">PASSWORD</label>
+            <input type="password" id="reg-password" class="clean-input w-100" style="width:100%;" placeholder="Create a password" required>
+          </div>
+          <div>
+            <label style="display:block; font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:4px;">ACCOUNT ROLE</label>
+            <select id="reg-role" class="clean-input w-100" style="width:100%;">
+              <option value="patient">🧑‍💼 Patient</option>
+              <option value="doctor">👨‍⚕️ Physician / Doctor</option>
+              <option value="staff">🏢 Clinic Management Staff</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block; font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:4px;">SPECIALTY OR CLINICAL NOTES</label>
+            <input type="text" id="reg-extra" class="clean-input w-100" style="width:100%;" placeholder="e.g. Cardiology or Blood Group O+">
+          </div>
+
+          <button type="submit" class="btn-clean" style="justify-content:center; padding: 10px; margin-top: 0.35rem;">
+            💾 Register & Store in SQLite DB
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 1. Emergency SOS Modal (C++ Triage & Dispatch) -->
+  <div id="modal-emergency-sos" class="clean-modal-backdrop">
+    <div class="clean-modal-box">
+      <div class="modal-header-row">
+        <h3 style="color: #ef4444; display: flex; align-items: center; gap: 0.5rem; font-size: 1.15rem;">
+          <span class="heartbeat-icon">🚨</span> Emergency SOS Ambulance Dispatch
+        </h3>
+        <button class="modal-close-icon modal-close-trigger">&times;</button>
+      </div>
+      <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+        Calls the native C++ engine to compute patient triage severity and dispatch the nearest available ambulance with sub-second geodesic routing.
+      </p>
+
+      <div style="display: flex; flex-direction: column; gap: 1rem;">
+        <div>
+          <label style="display:block; font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:4px;">CALLER / PATIENT NAME</label>
+          <input type="text" id="sos-caller-name" class="clean-input w-100" style="width:100%;" value="Emergency Patient">
+        </div>
+        <div>
+          <label style="display:block; font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:4px;">CONTACT PHONE</label>
+          <input type="text" id="sos-caller-phone" class="clean-input w-100" style="width:100%;" value="+91 98765 00108">
+        </div>
+        <div>
+          <label style="display:block; font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:4px;">NATURE OF EMERGENCY</label>
+          <select id="sos-emergency-type" class="clean-input w-100" style="width:100%;">
+            <option value="Acute Cardiac / Chest Pain">Acute Cardiac Arrest / Severe Chest Pain</option>
+            <option value="Road Accident / Severe Trauma">Road Accident / Poly-Trauma</option>
+            <option value="Severe Respiratory Distress">Acute Respiratory Distress / Wheezing</option>
+            <option value="Unconscious / Diabetic Emergency">Unconscious Patient / Stroke Symptoms</option>
+          </select>
+        </div>
+
+        <button class="btn-sos" style="justify-content:center; padding: 12px; margin-top: 0.5rem;" onclick="CleanApp.triggerEmergencySOS()">
+          ⚡ Calculate C++ Dispatch & Deploy Ambulance Now
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. New Appointment Modal -->
+  <div id="modal-new-appointment" class="clean-modal-backdrop">
+    <div class="clean-modal-box">
+      <div class="modal-header-row">
+        <h3 style="color: #fff; font-size: 1.15rem;">📅 Book New Appointment</h3>
+        <button class="modal-close-icon modal-close-trigger">&times;</button>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 1rem;">
+        <div>
+          <label style="display:block; font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:4px;">PATIENT NAME</label>
+          <input type="text" id="new-apt-name" class="clean-input w-100" style="width:100%;" placeholder="e.g. Vikram Sharma">
+        </div>
+        <div>
+          <label style="display:block; font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:4px;">DOCTOR</label>
+          <select id="new-apt-doctor" class="clean-input w-100" style="width:100%;">
+            <option value="Dr. Arvind Mehta">Dr. Arvind Mehta (General Medicine & Endocrinology)</option>
+            <option value="Dr. Shalini Rao">Dr. Shalini Rao (Pulmonology)</option>
+            <option value="Dr. Neha Kapoor">Dr. Neha Kapoor (Cardiology)</option>
+          </select>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+          <div>
+            <label style="display:block; font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:4px;">DATE</label>
+            <input type="date" id="new-apt-date" class="clean-input w-100" style="width:100%;">
+          </div>
+          <div>
+            <label style="display:block; font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:4px;">TIME</label>
+            <input type="text" id="new-apt-time" class="clean-input w-100" style="width:100%;" value="10:30 AM">
+          </div>
+        </div>
+
+        <button class="btn-clean" style="justify-content:center; padding: 10px; margin-top: 0.5rem;" onclick="CleanApp.submitNewAppointment()">
+          💾 Save Appointment to SQLite
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. New Patient Modal -->
+  <div id="modal-new-patient" class="clean-modal-backdrop">
+    <div class="clean-modal-box">
+      <div class="modal-header-row">
+        <h3 style="color: #fff; font-size: 1.15rem;">👥 Register New Patient</h3>
+        <button class="modal-close-icon modal-close-trigger">&times;</button>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 1rem;">
+        <div>
+          <label style="display:block; font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:4px;">PATIENT FULL NAME</label>
+          <input type="text" id="new-pat-name" class="clean-input w-100" style="width:100%;" placeholder="e.g. Ananya Roy">
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+          <div>
+            <label style="display:block; font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:4px;">AGE</label>
+            <input type="number" id="new-pat-age" class="clean-input w-100" style="width:100%;" value="35">
+          </div>
+          <div>
+            <label style="display:block; font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:4px;">BLOOD GROUP</label>
+            <select id="new-pat-blood" class="clean-input w-100" style="width:100%;">
+              <option value="O+">O+</option>
+              <option value="O-">O-</option>
+              <option value="A+">A+</option>
+              <option value="A-">A-</option>
+              <option value="B+">B+</option>
+              <option value="B-">B-</option>
+              <option value="AB+">AB+</option>
+              <option value="AB-">AB-</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label style="display:block; font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:4px;">CONTACT PHONE</label>
+          <input type="text" id="new-pat-phone" class="clean-input w-100" style="width:100%;" placeholder="+91 98123 45678">
+        </div>
+        <div>
+          <label style="display:block; font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:4px;">PRIMARY CLINICAL CONDITION</label>
+          <input type="text" id="new-pat-condition" class="clean-input w-100" style="width:100%;" placeholder="e.g. Hypertension & Routine Checkup">
+        </div>
+
+        <button class="btn-clean" style="justify-content:center; padding: 10px; margin-top: 0.5rem;" onclick="CleanApp.submitNewPatient()">
+          💾 Save Patient to SQLite Database
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Request Blood Modal -->
+  <div id="modal-request-blood" class="clean-modal-backdrop">
+    <div class="clean-modal-box">
+      <div class="modal-header-row">
+        <h3 style="color: #ef4444; font-size: 1.15rem;">🩸 Emergency Blood Request</h3>
+        <button class="modal-close-icon modal-close-trigger">&times;</button>
+      </div>
+      <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+        The native C++ compatibility engine will automatically match universal donors (O-) and compatible blood groups in SQLite inventory.
+      </p>
+      <div style="display: flex; flex-direction: column; gap: 1rem;">
+        <div>
+          <label style="display:block; font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:4px;">PATIENT RECIPIENT GROUP</label>
+          <select id="req-blood-group" class="clean-input w-100" style="width:100%;">
+            <option value="O+">O+</option>
+            <option value="O-">O-</option>
+            <option value="A+">A+</option>
+            <option value="A-">A-</option>
+            <option value="B+">B+</option>
+            <option value="B-">B-</option>
+            <option value="AB+">AB+</option>
+            <option value="AB-">AB-</option>
+          </select>
+        </div>
+        <div>
+          <label style="display:block; font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:4px;">UNITS REQUIRED</label>
+          <input type="number" id="req-blood-units" class="clean-input w-100" style="width:100%;" value="1" min="1" max="10">
+        </div>
+
+        <button class="btn-clean" style="background:#ef4444; color:#fff; justify-content:center; padding: 10px; margin-top: 0.5rem;" onclick="CleanApp.submitBloodRequest()">
+          ⚡ Check Compatibility & Request Units
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-box" class="clean-toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="js/leaflet.js"></script>
+  <script src="js/api.js?v=4.2"></script>
+  <script src="js/clean-app.js?v=4.2"></script>
+
+</body>
+</html>

@@ -1,6 +1,6 @@
 My Name is Paras Manohar Arekar and this is my project for hackathon fit-fest 2k26 My Topic was "Clinic Appointment, Patient & Emergency Management System"
 
-This is the description of my project
+This is the description of My Project
 
 # 🩺 PulseSync: Clinic & Emergency Healthcare Platform
 

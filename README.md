@@ -1,3 +1,7 @@
+My Name is Paras Manohar Arekar and this is my project for hackathon fit-fest 2k26 My Topic was "Clinic Appointment, Patient & Emergency Management System"
+
+This is the description of my project
+
 # 🩺 PulseSync: Clinic & Emergency Healthcare Platform
 
 A modern, responsive, high-performance web platform designed for small clinics, attending physicians, and patients. PulseSync bridges the gap between manual clinic administration (notebooks, phone calls, WhatsApp messages) and critical emergency coordination (ambulance dispatch, blood stock availability, and nearby hospital referrals).
